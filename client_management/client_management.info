@@ -1,0 +1,4 @@
+name = ClientManagement
+description = Enables developer register application
+core = 7.x
+

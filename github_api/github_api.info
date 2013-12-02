@@ -1,0 +1,14 @@
+name = GitHub API
+description = Access the github API from Drupal.
+
+core = 7.x
+
+dependencies = composer_manager
+
+
+; Information added by drupal.org packaging script on 2013-09-11
+version = "7.x-1.0-alpha1"
+core = "7.x"
+project = "github_api"
+datestamp = "1378911114"
+

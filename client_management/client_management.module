@@ -1,0 +1,148 @@
+<?php
+
+/**
+ * This module provides a simple way to manage customer applications and their application instances.
+ *
+ *
+ * @author Gauri Jagtap (gauri.jagtap@happiestminds.com)
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function client_management_menu() {
+  $items = array();
+
+    $items['client/register'] = array(//this creates a URL that will call this form at "examples/form-example"
+    'title' => 'Application Registration Form', //page title
+    'description' => 'A form to create/register an app.',
+    'page callback' => 'client_registration_formcall', //this is the function that will be called when the page is accessed.  for a form, use drupal_get_form
+    'access callback' => 'user_access',
+    'access arguments' => array('app registration permission')
+  );
+
+  $items['client/registration/success/%/%'] = array(//this creates a URL that will call this form at "examples/form-example"
+    'title' => 'Application Registration Success', //page title
+    'description' => 'A form to display the response page of the created app.',
+    'page callback' => 'client_registration_formsuccess', //this is the function that will be called when the page is accessed.  for a form, use drupal_get_form
+    'page arguments' => array(2,3), //put the name of the form here
+    //'access callback' => TRUE
+    'access callback' => 'user_access',
+    'access arguments' => array('app registration permission')
+  );
+
+
+
+     $items['client/list'] = array(//this creates a URL that will call this form at "examples/form-example"
+    'title' => 'Customer List', //page title
+    'description' => 'A page to view all access key.',
+    'page callback' => 'client_list', //this is the function that will be called when the page is accessed.  for a form, use drupal_get_form
+    'access callback' => 'user_access',
+    'access arguments' => array('app registration permission')
+  );
+
+   return $items;
+}
+
+
+function client_list(){
+    $query = db_select('users', 'u');
+    $query->fields('u', array('uid','name'));
+    $result = $query->execute()->fetchAll();
+     return theme('client_list_template',array('clientlist' => $result));
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function client_management_theme() {
+
+  $themes = array(
+      'client_list_template' => array(
+      'template' => 'clientlist', // your template file called clientlist.tpl.php
+      'variables' => array('clientlist' => NULL),
+    ),
+   'client_registration_template' => array(
+      'template' => 'clientregistration_success', // your template file called apiregistration_success.tpl.php
+      'variables' => array('recentaddedapp' => NULL),
+    ),
+	
+    'client_registration_formpage' => array(
+      'template' => 'clientregisterform', // your template file called appregisterform.tpl.php
+      'variables' => array('registrationform' => NULL),
+    ),
+  );
+  return $themes;
+}
+
+
+/**
+ * Implements the page function to display the registration API form.
+ */
+function client_registration_formcall() {
+  $mainContents = drupal_get_form('client_registration_form');
+  return theme('client_registration_formpage', array('registrationform' => $mainContents));
+}
+
+/**
+ * Implements hook_createform().
+ */
+function client_registration_form($form, &$form_state) {
+
+  $form['customername'] = array(
+    '#title' => t('Customer Name'),
+    '#type' => 'textfield',
+    '#required' => TRUE,
+    '#attributes' => array(
+      'required' => array('')),
+  );
+
+  $form['applicationurl'] = array(
+    '#title' => t('Application Base URL'),
+    '#type' => 'textarea',
+    '#required' => TRUE,
+    '#attributes' => array(
+      'required' => array('')),
+  );
+    $form['pre_production_url'] = array(
+    '#title' => t('Pre-production URL'),
+    '#type' => 'textarea',
+    '#required' => TRUE,
+    '#attributes' => array(
+      'required' => array('')),
+  );
+    $form['production_url'] = array(
+    '#title' => t('Production URL'),
+    '#type' => 'textarea',
+    '#required' => TRUE,
+    '#attributes' => array(
+      'required' => array('')),
+  );
+ 
+   $form['submit'] = array(
+    '#value' => 'Submit',
+    '#type' => 'submit',
+  );
+  return $form;
+}
+
+/**
+ * Implements hook_form_submit().
+ */
+function client_registration_form_submit($form, &$form_state) {
+    
+ /*$message = 'You have submitted the form successfully ';
+  drupal_set_message(t($message));*/
+  $link = 'client/registration/success/1/register';
+      $form_state['redirect'] = $link;
+}
+
+/**
+ * Implements hook_displayformsuccess page().
+ */
+function client_registration_formsuccess() {
+return theme('client_registration_template');
+}
+
+

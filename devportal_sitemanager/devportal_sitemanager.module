@@ -1,0 +1,251 @@
+<?php
+
+function pdn_solrsearch_init() {
+    
+}
+
+function pdn_solrsearch_form_alter(&$form, &$form_state, $form_id) {
+
+    if ($form_id == 'user_register_form') {
+        $form['field_last_name']['#weight'] = 1;
+		$form['field_terms_and_conditions']['#weight']=99;
+    }
+
+
+    if ((arg(0) == 'search') && (arg(1) == 'site')) {
+        if ($form['#id'] == 'search-form') {
+            global $user;
+            if ($user->uid > 0) {
+                $module_path = drupal_get_path('module', 'pdn_solrsearch');
+                global $base_url;
+                drupal_add_css($module_path . '/css/pdn_solr.css', array('group' => CSS_THEME));
+                drupal_add_js($module_path . '/js/pdn_solrscript.js', 'file');
+                $form['basic']['save_search'] = array(
+                    '#type' => 'button',
+                    '#value' => t('Save Your Search'),
+                    '#attributes' => array('id' => array('save-search'), 'onclick' => array('return false;')),
+                    '#suffix' => "<span class='save-loader'><img src='$base_url/$module_path/images/ajax-loader.gif' /></span>",
+                );
+            }
+        }
+    }
+}
+
+function pdn_solrsearch_block_info() {
+
+    $blocks['saved_search_blk'] = array(
+        'info' => t('Saved Search Block'),
+        'cache' => DRUPAL_NO_CACHE,
+    );
+
+    return $blocks;
+}
+
+function pdn_solrsearch_block_view($delta = '') {
+
+    $block = array();
+
+    switch ($delta) {
+        case 'saved_search_blk':
+            //$block['subject'] = t('Saved Search Block');
+            $block['content'] = _get_saved_blk();
+            break;
+    }
+
+    return $block;
+}
+
+function pdn_solrsearch_menu() {
+    $items = array();
+
+    $items['save-search/%'] = array(
+        'title' => 'Save Search',
+        'page callback' => '_save_search_term',
+        'page arguments' => array(1),
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['my-saved-searchs'] = array(
+        'title' => 'Save Search',
+        'page callback' => '_get_saved_searchs',
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['delete-searchs/%'] = array(
+        'title' => 'Save Search',
+        'page callback' => '_delete_saved_searchs',
+        'page arguments' => array(1),
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    );
+
+    return $items;
+}
+
+function _get_saved_blk($user = NULL) {
+    if (empty($user)) {
+        global $user;
+    }
+    if ($user->uid > 0) {
+        drupal_add_css(drupal_get_path('module', 'pdn_solrsearch') . '/css/pdn_solr.css', array('group' => CSS_THEME));
+        $query = db_select('pdn_saved_search', 's');
+        $results = $query->fields('s')
+                ->condition('uid', $user->uid, '=')
+                ->range(0, 5)
+                ->orderBy('timestamp', 'DESC')
+                ->execute()
+                ->fetchAll();
+        $header = array(
+            array('data' => t('Keywords')),
+            array('data' => t('Date')),
+        );
+        $rows = array();
+        foreach ($results as $row) {
+            $rows[] = array(
+                l(check_plain($row->search_term), 'search/site/' . check_plain($row->search_term)),
+                array('data' => format_date($row->timestamp, 'small'), 'nowrap' => 'nowrap'),
+            );
+        }
+        $build = array(
+            '#theme' => 'table',
+            '#header' => $header,
+            '#rows' => $rows,
+            '#empty' => t('No search keywords found.'),
+        );
+        //$output = theme('saved_search_blk',array('content_array'=>$data));
+        return drupal_render($build);
+    }
+}
+
+function _delete_saved_searchs($sid = NUll) {
+
+    global $user;
+
+    if (!empty($sid)) {
+        $result = db_delete('pdn_saved_search')
+                ->condition('uid', $user->uid, '=')
+                ->condition('sid', $sid, '=')
+                ->execute();
+        if ($result) {
+            drupal_set_message('Search term got deleted successfully');
+            drupal_goto('my-saved-searchs');
+        } else {
+            drupal_set_message('Unable to delete the selected search term. Please try again.', 'error');
+            drupal_goto('my-saved-searchs');
+        }
+    } else {
+        drupal_set_message('Invalid Search Term.', 'warning');
+        drupal_goto('my-saved-searchs');
+    }
+}
+
+function _get_saved_searchs() {
+
+    global $user;
+    if ($user->uid > 0) {
+        drupal_add_css(drupal_get_path('module', 'pdn_solrsearch') . '/css/pdn_solr.css', array('group' => CSS_THEME));
+        $data = db_select('pdn_saved_search', 's')
+                ->fields('s')
+                ->condition('uid', $user->uid, '=')
+                ->execute()
+                ->fetchAll();
+
+        $total = count($data);
+
+        pager_default_initialize($total, 10);
+
+        $offset = pager_find_page();
+        $num_per_page = 10;
+        $limit = $offset * $num_per_page;
+        $subArray = array_slice($data, $limit, $num_per_page);
+
+        $output = theme('saved_search_listing', array('content_array' => $subArray)) . theme('pager');
+        return $output;
+    }
+}
+
+function _save_search_term($term = Null) {
+
+    $term = trim($term);
+    global $user;
+
+    if (!empty($term)) {
+        $check_db = db_select('pdn_saved_search', 's')
+                ->fields('s')
+                ->condition('uid', $user->uid, '=')
+                ->condition('search_term', $term, '=')
+                ->execute()
+                ->fetchAll();
+        if (count($check_db) > 0) {
+            echo 'neutral';
+            exit;
+        }
+
+        $data_id = db_insert('pdn_saved_search')
+                ->fields(array(
+                    'uid' => $user->uid,
+                    'search_term' => $term,
+                    'timestamp' => time(),
+                ))
+                ->execute();
+        if (!empty($data_id)) {
+            echo 'true';
+            exit;
+        } else {
+            echo 'false';
+            exit;
+        }
+    } else {
+        echo 'false';
+        exit;
+    }
+}
+
+function pdn_solrsearch_theme() {
+
+    return array(
+        'saved_search_listing' => array(
+            'template' => 'saved-search-listing',
+            'variables' => array('content_array' => NULL),
+        ),
+        'saved_search_blk' => array(
+            'template' => 'saved-search-blk',
+            'variables' => array('content_array' => NULL),
+        ),
+        'user_profile_form' => array(
+            'render element' => 'form',
+            'template' => 'user-profile-form',
+            'path' => drupal_get_path('theme', 'pdn') . '/templates',
+        ),
+    );
+}
+
+function pdn_solrsearch_preprocess_user_profile_form(&$variables) {
+    $order = array('field_user_full_name', 'field_last_name', 'account', 'timezone', 'picture', 'field_user_company_name', 
+        'field_user_title', 'field_about_me', 'privatemsg','field_terms_and_conditions','actions');
+    $variables['pdn_profile_form'] = array();
+    $variables['pdn_profile_misc'] = array();
+
+    foreach ($order as $key) {
+        if (isset($variables['form'][$key])) {
+            if ($key == 'account') {
+                $htmlmail_plaintext = $variables['form'][$key]['mail']['htmlmail_plaintext'];
+                $variables['form'][$key]['pass']['pass1']['#title'] = "New Password";
+                unset($variables['form'][$key]['mail']['htmlmail_plaintext']);
+            } elseif ($key == 'privatemsg') {
+                $variables['form'][$key]['#title'] = 'Communications Preference';
+                $variables['form'][$key]['htmlmail_plaintext'] = $htmlmail_plaintext;
+            }
+            $variables['pdn_profile_form'][$key] = drupal_render($variables['form'][$key]);
+        }
+    }
+    foreach (element_children($variables['form']) as $key) {
+        if (!in_array($key, $order)) {
+            $variables['pdn_profile_misc'][$key] = drupal_render($variables['form'][$key]);
+        }
+    }
+}
+
+?>

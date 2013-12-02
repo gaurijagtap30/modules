@@ -1,0 +1,13 @@
+name = Developer Portal Site Manager 
+description = Manages the developer portal sites with regular maintance support for the administrators.
+core = 7.x
+
+files[] = devportal_sitemanager.install
+files[] = devportal_sitemanager.module
+files[] = devportal_sitemanager-listing.tpl.php
+
+files[] = js/pdevportal_script.js
+files[] = css/devportal_sitemanager.css
+
+version = "7.x"
+package = DevPortalAdmin

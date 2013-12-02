@@ -1,0 +1,50 @@
+<?php
+// $Id: cprinfocentre
+/**
+ * @file
+ * Contains install and update functions for cprinfocentre.
+ */
+
+
+/**
+ * Implements hook_schema().
+ */
+function devportal_sitemanager_schema() {
+	
+  $schema['devportal_customers'] = array(
+      'fields' => array(
+		'cid' => array(
+			'type' => 'serial',
+			'unsigned' => TRUE,
+			'not null' => TRUE,
+			'description' => t("Primary key: A unique ID for each customer."),
+			),
+		'customer_name' => array(
+			'type' => 'text',
+			'not null' => TRUE,
+			'description' => t('Customer Name'),
+			),
+      'pre_production_url' => array(
+			'type' => 'text',
+			'not null' => TRUE,
+			'description' => t('Preproduction Site URL'),
+			),
+      'production_url' => array(
+			'type' => 'text',
+			'not null' => TRUE,
+			'description' => t('Production Site URL'),
+			),
+        'timestamp' => array(
+          'description' => 'Timestamp',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE),    
+      ),
+      'primary key' => array('cid'),
+    );
+
+	return $schema;
+}
+
+?>
+
